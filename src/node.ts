@@ -37,11 +37,11 @@ export interface ParamInterface{
 	name:	string
 	isStatic:boolean
 }
-interface DynamicParamInterface extends ParamInterface{
+export interface DynamicParamInterface extends ParamInterface{
 	isStatic: false
 	regex:	RegExp
 }
-interface StaticParamInterface extends ParamInterface{
+export interface StaticParamInterface extends ParamInterface{
 	isStatic: true
 	parts: string[]
 }
@@ -141,8 +141,10 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 						if(j != partsLen+1)
 							throw new Error(`Expected wildcard to be the last part in the route: ${route}`);
 						if(part === '*'){
-							// Generic wildcard
-							node= currentNode.nodeWildcard ??= new Node<T>(options);
+							// Generic wildcard  ( "??=" is supported starting from nodejs15)
+							node= currentNode.nodeWildcard
+							if(node==null)
+								node= currentNode.nodeWildcard = new Node<T>(options);
 							nextNodes.push(node);
 						} else {
 							// parametred wildcard

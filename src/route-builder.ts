@@ -1,6 +1,6 @@
 import GridfwRouter from ".";
 import { addMethod, addWrapper, createRoute, Handler, Node, WrapperFx, mountSubRouter } from "./node";
-import { Options } from "./options";
+import { DEFAULT_OPTIONS, Options } from "./options";
 
 
 /** Abstract route builder */
@@ -8,7 +8,7 @@ export class RouteBuilder<Controller>{
 	protected _rootNodes: Node<Controller>[];
 	protected _self: GridfwRouter<Controller>;
 	/** Constructor used only by GridfwRouter */
-	constructor(options: Options);
+	constructor(options?: Options);
 	constructor(rootNodes: Node<Controller>[], rootRouter: GridfwRouter<Controller>)
 	constructor(rootNodes?: any, rootRouter?: any){
 		if(arguments.length===2){
@@ -18,8 +18,9 @@ export class RouteBuilder<Controller>{
 		else{
 			if(!(this instanceof GridfwRouter))
 				throw new Error('Illegal constructor');
+			var options= Object.assign({}, DEFAULT_OPTIONS, rootNodes);
 			this._self= this
-			this._rootNodes= [new Node<Controller>(rootNodes)];
+			this._rootNodes= [new Node<Controller>(options)];
 		}
 	}
 
