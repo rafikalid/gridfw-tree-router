@@ -1,5 +1,6 @@
-import GridfwRouter from ".";
+import GridfwRouter, { paramType } from ".";
 import type { Options } from "./options";
+import type {paramResolverHandler} from '.'
 
 
 /**
@@ -40,6 +41,7 @@ export interface ParamInterface{
 export interface DynamicParamInterface extends ParamInterface{
 	isStatic: false
 	regex:	RegExp
+	resolver: paramResolverHandler
 }
 export interface StaticParamInterface extends ParamInterface{
 	isStatic: true
@@ -138,7 +140,7 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 						break;
 					case '*':
 						// Check wildcard is the last element in the path
-						if(j != partsLen+1)
+						if(j != partsLen-1)
 							throw new Error(`Expected wildcard to be the last part in the route: ${route}`);
 						if(part === '*'){
 							// Generic wildcard  ( "??=" is supported starting from nodejs15)
@@ -283,4 +285,161 @@ function _deepMergeNodes<T>(queue: Node<T>[]){
 			targetNode.param= srcNode.param;
 		}
 	}
+}
+
+/** HTTP Status */
+export enum HTTPStatus{
+	OK= 200,
+	NOT_FOUND= 404,
+	INTERNAL_ERROR= 500
+}
+
+/** Path resolver result */
+export interface PathResolverResult<T>{
+	status: HTTPStatus,
+	controller: T|undefined,
+	error:	Error|undefined,
+	wrappers: WrapperFx[] | undefined,
+	params: string[] | undefined,
+	paramResolvers: ParamInterface[] | undefined
+}
+
+/** Node verification step */
+enum NodeCheckStep{
+	STATIC,
+	PARAM,
+	WILD_CARD_PARAM,
+	WILD_CARD
+}
+
+/** resolve path */
+export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: string): PathResolverResult<T>{
+	var currentNode= app._root;
+	// var options= currentNode._options;
+	var result: PathResolverResult<T>;
+	try {
+		var parts= path.slice(1).split('/');
+		var part:string;
+		var partsLen= parts.length;
+		var partI= 0; // part index
+		var queue: Node<T>[]= [currentNode];
+		var queueStep: NodeCheckStep[]= [NodeCheckStep.STATIC]; // [NodeCheckStep, ...]
+		var queueIndex: number[]= [0];
+		var node: Node<T>|undefined;
+		var index: number, len: number;
+		rootwhile: while(true){
+			currentNode= queue[partI];
+			if(partI === partsLen){
+				// found
+				--partI; // Go back
+				if(currentNode.methods.has(method))
+					break rootwhile;
+			} else {
+				swtch: switch(queueStep[partI]){
+					case NodeCheckStep.STATIC:
+						part= parts[partI];
+						queueStep[partI]= NodeCheckStep.PARAM // check params next time
+						if(currentNode._options.ignoreCase) part= part.toLowerCase();
+						if(node= currentNode.nodes.get(part)){
+							// Go to next node
+							++partI;
+							queue[partI]= node;
+							queueIndex[partI]= 0;
+							queueStep[partI]= NodeCheckStep.STATIC
+						}
+						break;
+					case NodeCheckStep.PARAM:
+						part= parts[partI];
+						var nodeParams= currentNode.nodeParams;
+						len= nodeParams.length;
+						index= queueIndex[partI];
+						while(index<len){
+							node= nodeParams[index++];
+							if((node.param as DynamicParamInterface).regex.test(part)){
+								// save next index
+								queueIndex[partI]= index;
+								// Go to next
+								++partI;
+								queue[partI]= node;
+								queueStep[partI]= NodeCheckStep.STATIC;
+								queueIndex[partI]= 0;
+								break swtch;
+							}
+						}
+						// Check wildCard param instead
+						queueStep[partI]= NodeCheckStep.WILD_CARD_PARAM;
+						queueIndex[partI]= 0;
+						break;
+					case NodeCheckStep.WILD_CARD_PARAM:
+						var nodeParams= currentNode.nodeWildcards;
+						len= nodeParams.length;
+						index= queueIndex[partI];
+						if(len>0){
+							part= parts.slice(partI).join('/');
+							while(index<len){
+								node= nodeParams[index++];
+								if(node.methods.has(method) && (node.param as DynamicParamInterface).regex.test(part)){
+									parts[partI]= part; // keep this value
+									break rootwhile;
+								}
+							}
+						}
+						// Check wildCard instead
+						queueStep[partI]= NodeCheckStep.WILD_CARD;
+						break;
+					case NodeCheckStep.WILD_CARD:
+						if(node= currentNode.nodeWildcard){
+							part= parts.slice(partI).join('/');
+							if(node.methods.has(method) && (node.param as DynamicParamInterface).regex.test(part)){
+								parts[partI]= part; // keep this value
+								break rootwhile;
+							}
+						}
+						// Go back to previous node
+						--partI;
+						if(partI<0){
+							// Not found
+							throw HTTPStatus.NOT_FOUND;
+						}
+						break
+					default:
+						throw new Error(`Illegal step: ${queueStep[partI]}`);
+				}
+			}
+		}
+		// Collect params and wrappers
+		var wrappers:WrapperFx[]= [];
+		var params: string[]= [];
+		var paramResolvers: ParamInterface[]= [];
+		var i;
+		var paramNode: ParamInterface|undefined;
+		for(i=0; i<=partI; i++){
+			node= queue[i];
+			if(node.wrappers.length)
+				wrappers.push(...node.wrappers);
+			if(paramNode= node.param){
+				params.push(parts[i])
+				paramResolvers.push(paramNode);
+			}
+		}
+		//Found
+		result={
+			status: HTTPStatus.OK,
+			controller: queue[partI].methods.get(method),
+			error: undefined,
+			wrappers,
+			params,
+			paramResolvers
+		}
+	} catch (error) {
+		result= {
+			status: error===HTTPStatus.NOT_FOUND ? HTTPStatus.NOT_FOUND : HTTPStatus.INTERNAL_ERROR,
+			controller: undefined,
+			error: error,
+			wrappers: undefined,
+			params: undefined,
+			paramResolvers: undefined
+		};
+	}
+	return result;
 }

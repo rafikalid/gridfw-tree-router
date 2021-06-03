@@ -16,6 +16,8 @@ export enum paramType{
 	QUERY_PARAM
 };
 
+const ReservedParamNameRegex= /^__.+__$/;
+
 export default class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	/** Tree route */
 	readonly _root: Node<Controller>;
@@ -36,6 +38,10 @@ export default class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	/** Param implementation */
 	param(paramName: string, regex?:any, resolver?: any){
 		var paramMap= this._params;
+		if(typeof paramName !== 'string')
+			throw new Error('Expected param name as string');
+		if(paramName==='constructor' || ReservedParamNameRegex.test(paramName))
+			throw new Error(`${paramName} is a reserved name of has reserved format!`);
 		if(paramMap.has(paramName))
 			throw new Error(`Param already defined: ${paramName}`);
 		if(Array.isArray(regex)){
@@ -54,7 +60,8 @@ export default class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 			paramMap.set(paramName, {
 				name: paramName,
 				isStatic: false,
-				regex: regex
+				regex: regex,
+				resolver: resolver
 			} as DynamicParamInterface);
 		}
 		return this
@@ -65,5 +72,5 @@ export default class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	hasParam(paramName: string){ return this._params.has(paramName); }
 }
 
-type paramResolverHandler= (value: any, type: paramType, request: any, response: any)=> any
-type paramTestCb= (value: any)=> boolean
+export type paramResolverHandler= (value: any, type: paramType, request: any, response: any)=> any
+export type paramTestCb= (value: any)=> boolean
