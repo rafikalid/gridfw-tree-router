@@ -18,18 +18,23 @@ export class Node<Controller>{
 	/** Map wild card params to node */
 	nodeWildcards: Node<Controller>[]= [];
 	/** Generic wild card node */
-	nodeWildcard?: Node<Controller>;
+	nodeWildcard: Node<Controller>|undefined = undefined;
 	/** Wrappers */
 	wrappers: WrapperFx[]= [];
 	/** Map HTTP methods to controllers */
 	methods: Map<string, Controller>= new Map<string, Controller>();
 	/** Parameter of current node (case of parametred node) */
-	param?: ParamInterface
+	param?: ParamInterface= undefined;
 
 	/** @private used only to create root node */
 	constructor(options: Options, param?: ParamInterface){
 		this._options= options;
 		this.param= param;
+	}
+
+	/** Convert node to string */
+	toString(): string{
+		return nodeToString(this);
 	}
 }
 
@@ -301,7 +306,8 @@ export interface PathResolverResult<T>{
 	error:	Error|undefined,
 	wrappers: WrapperFx[] | undefined,
 	params: string[] | undefined,
-	paramResolvers: ParamInterface[] | undefined
+	paramResolvers: ParamInterface[] | undefined,
+	parts: string[]|undefined // splited path parts
 }
 
 /** Node verification step */
@@ -331,9 +337,9 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 			currentNode= queue[partI];
 			if(partI === partsLen){
 				// found
-				--partI; // Go back
 				if(currentNode.methods.has(method))
 					break rootwhile;
+				--partI; // Go back
 			} else {
 				swtch: switch(queueStep[partI]){
 					case NodeCheckStep.STATIC:
@@ -413,7 +419,7 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 		var paramResolvers: ParamInterface[]= [];
 		var i;
 		var paramNode: ParamInterface|undefined;
-		for(i=0; i<=partI; i++){
+		for(i=0; i<partI; i++){
 			node= queue[i];
 			if(node.wrappers.length)
 				wrappers.push(...node.wrappers);
@@ -429,7 +435,8 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 			error: undefined,
 			wrappers,
 			params,
-			paramResolvers
+			paramResolvers,
+			parts: partsLen===partI? parts : parts.slice(0, partI) // save parts
 		}
 	} catch (error) {
 		result= {
@@ -438,8 +445,110 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 			error: error,
 			wrappers: undefined,
 			params: undefined,
-			paramResolvers: undefined
+			paramResolvers: undefined,
+			parts: undefined
 		};
 	}
 	return result;
+}
+
+/** @private get map kies */
+function _mapKies(map: Map<string, any>){
+	var kies: string[]= [];
+	map.forEach((v, k) => {
+		kies.push(k);
+	});
+	return kies;
+}
+
+/** Convert router tree to string */
+export function nodeToString<T>(rootNode: Node<T>){
+	var queue= [rootNode];
+	var queueStep= [NodeCheckStep.STATIC];
+	var queueStaticKies: string[][]= [];
+	var queueIndex= [0];
+	var queuePrefix= ['']; // prefix for node lines
+	var dept= 0;
+	var lines: string[]= [''];
+	var k: string;
+	var nextNode: Node<T>;
+	var staticArr: string[];
+	var isLastNode: boolean;
+	var circular= new Set<Node<T>>(); // prevent circular
+	var mx= 100;
+	rootLoop: while(dept >= 0){
+		if(mx-- < 0) break;
+		var node= queue[dept];
+		var index= queueIndex[dept];
+		var prefix= queuePrefix[dept];
+		// print
+		switch(queueStep[dept]){
+			case NodeCheckStep.STATIC:
+				if(index === 0){
+					// prevent circular
+					if(circular.has(node)){
+						lines.push(`${prefix}└─ <${node===queue[dept-1]? 'parent': 'circular'}>`);
+						--dept;
+						continue rootLoop;
+					}
+					circular.add(node);
+					staticArr= queueStaticKies[dept]= _mapKies(node.nodes);
+				} else
+					staticArr= queueStaticKies[dept];
+				k= staticArr[index]
+				if(k!= null){
+					nextNode= node.nodes.get(k)!;
+					isLastNode= !node.nodeWildcard && node.nodeWildcards.length===0 && node.nodeParams.length===0 && (index === staticArr.length - 1);
+					lines.push(`${prefix}${isLastNode? '└─' : '├─'} /${k}`);
+				} else {
+					// check params next
+					queueStep[dept]= NodeCheckStep.PARAM;
+					queueIndex[dept]= 0;
+					continue rootLoop;
+				}
+				break;
+			case NodeCheckStep.PARAM:
+				if(nextNode= node.nodeParams[index]){
+					isLastNode= !node.nodeWildcard && node.nodeWildcards.length===0 && index === (node.nodeParams.length-1)
+					lines.push(`${prefix}${isLastNode? '└─' : '├─'} :${nextNode.param!.name}`);
+				} else {
+					// go next
+					queueStep[dept]= NodeCheckStep.WILD_CARD_PARAM;
+					queueIndex[dept]= 0;
+					continue rootLoop;
+				}
+				break;
+			case NodeCheckStep.WILD_CARD_PARAM:
+				if(nextNode= node.nodeWildcards[index]){
+					isLastNode= !node.nodeWildcard && index === node.nodeWildcards.length - 1
+					lines.push(`${prefix}${isLastNode? '└─' : '├─'} *${nextNode.param!.name}`);
+				} else {
+					// go next
+					queueStep[dept]= NodeCheckStep.WILD_CARD;
+					queueIndex[dept]= 0;
+					continue rootLoop;
+				}
+				break;
+			case NodeCheckStep.WILD_CARD:
+				if(index===0 && node.nodeWildcard){
+					nextNode= node.nodeWildcard;
+					isLastNode= true;
+					lines.push(`${prefix}└─ *`);
+				} else {
+					--dept // back
+					continue rootLoop;
+				}
+				break
+			default:
+				throw new Error(`Enexpected step: ${queueStep[dept]}`);
+		}
+		// next dept
+		++queueIndex[dept] // next index for current dept
+		++dept // go to next dept
+		queue[dept]= nextNode
+		queueIndex[dept]= 0
+		queueStep[dept]= NodeCheckStep.STATIC
+		queuePrefix[dept]= `${prefix}${isLastNode? "    " : "│   "}`;
+	}
+	return lines.join("\n");
 }

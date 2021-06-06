@@ -1,5 +1,6 @@
 import GridfwRouter from '../src'
 import Assert from 'assert'
+import { resolvePath } from '../src/node';
 
 // Test 1
 describe('Test routes', function(){
@@ -32,5 +33,14 @@ describe('Test routes', function(){
 		Assert.throws(()=>{
 			app.get('/*var1/hello', function(){})
 		})
-	})
+	});
+
+	 it('should resolve static paths', function(){
+		var resp= resolvePath(app, 'GET', '/');
+		console.log('---', resp);
+		console.log('***', app._root);
+
+		// print router tree
+		console.log("[APP]\n", app.toString());
+	 })
 });

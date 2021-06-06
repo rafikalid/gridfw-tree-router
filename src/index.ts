@@ -2,7 +2,7 @@
  * Fast & lightweight Tree Router for Node & browser
  */
 
-import { DynamicParamInterface, Node, ParamInterface, StaticParamInterface } from "./node";
+import { DynamicParamInterface, Node, nodeToString, ParamInterface, StaticParamInterface } from "./node";
 import { Options } from "./options";
 import { RouteBuilder } from "./route-builder";
 
@@ -70,6 +70,11 @@ export default class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	paramEntries(){ return this._params.entries() }
 	paramCount(){ return this._params.size }
 	hasParam(paramName: string){ return this._params.has(paramName); }
+
+	/** router to string */
+	toString(): string{
+		return nodeToString(this._root);
+	}
 }
 
 export type paramResolverHandler= (value: any, type: paramType, request: any, response: any)=> any
