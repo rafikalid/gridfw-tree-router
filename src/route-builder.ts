@@ -20,7 +20,7 @@ export class RouteBuilder<Controller>{
 				throw new Error('Illegal constructor');
 			var options= Object.assign({}, DEFAULT_OPTIONS, rootNodes);
 			this._self= this
-			this._rootNodes= [new Node<Controller>(options)];
+			this._rootNodes= [new Node<Controller>(options, true)];
 		}
 	}
 

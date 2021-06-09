@@ -1,4 +1,4 @@
-import GridfwRouter, { paramType } from ".";
+import type GridfwRouter from ".";
 import type { Options } from "./options";
 import type {paramResolverHandler} from '.'
 
@@ -24,12 +24,17 @@ export class Node<Controller>{
 	/** Map HTTP methods to controllers */
 	methods: Map<string, Controller>= new Map<string, Controller>();
 	/** Parameter of current node (case of parametred node) */
-	param?: ParamInterface= undefined;
+	param: ParamInterface|undefined;
+	/** If this node is accessed by a static route */
+	readonly isStatic: boolean
 
 	/** @private used only to create root node */
-	constructor(options: Options, param?: ParamInterface){
+	constructor(options: Options, isStatic: boolean, param?: ParamInterface){
 		this._options= options;
 		this.param= param;
+		this.isStatic= isStatic;
+		// If ignore trailing slashes
+		if(options.ignoreTrailingSlash) this.nodes.set('', this);
 	}
 
 	/** Convert node to string */
@@ -47,6 +52,8 @@ export interface DynamicParamInterface extends ParamInterface{
 	isStatic: false
 	regex:	RegExp
 	resolver: paramResolverHandler
+	/** Enable caching value if resolver do not receive req and resp */
+	enableResolverCache: boolean
 }
 export interface StaticParamInterface extends ParamInterface{
 	isStatic: true
@@ -72,18 +79,22 @@ export function createRoute<T>(rootNodes: Node<T>[], route: string|string[]): No
 }
 
 /** Create route method */
-export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], routes: string | string[]){
+export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: string | string[]){
 	// Convert routes into array
 	if(typeof routes === 'string') routes= [routes]
 	var i=0, len= routes.length, route, j, k;
 	var paramsMap= app._params;
+	var currentNodes= rootNodes;
 	for(; i<len; i++){
 		// Prepare route
 		route= routes[i].trim();
+		if(route.startsWith('/')) route= route.substr(1);
 		var parts= route.split('/');
 		var partsLen= parts.length;
+		var currentNodes= rootNodes;
 		var nextNodes: Node<T>[];
 		var node;
+		var isStaticRoute= true; // set if this route has no params
 		// Go through route
 		for(j=0; j<partsLen; j++){
 			var part= parts[j];
@@ -95,11 +106,11 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 				//* Flags
 				var options= currentNode._options;
 				var ignoreCase= options.ignoreCase;
-				var ignoreTrailingSlash= !options.trailingSlash
 				//* Swith part type
 				switch(part[0]){
 					case ':':
 						//* param
+						isStaticRoute= false;
 						var param= paramsMap.get(part.substr(1));
 						if(!param) throw new Error(`Undefined parameter: ${part.substr(1)}`);
 						var l, ref, lLen;
@@ -117,7 +128,7 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 										node.param= param;
 									}
 								} else {
-									node= new Node<T>(options, param);
+									node= new Node<T>(options, isStaticRoute, param);
 									currentNode.nodes.set(part2, node);
 								}
 								nextNodes.push(node);
@@ -136,7 +147,7 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 							}
 							// Create new node if not already exists
 							if(!node){
-								node= new Node<T>(options, param);
+								node= new Node<T>(options, isStaticRoute, param);
 								ref.push(node);
 							}
 							// add to next
@@ -144,6 +155,7 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 						}
 						break;
 					case '*':
+						isStaticRoute= false;
 						// Check wildcard is the last element in the path
 						if(j != partsLen-1)
 							throw new Error(`Expected wildcard to be the last part in the route: ${route}`);
@@ -151,7 +163,7 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 							// Generic wildcard  ( "??=" is supported starting from nodejs15)
 							node= currentNode.nodeWildcard
 							if(node==null)
-								node= currentNode.nodeWildcard = new Node<T>(options);
+								node= currentNode.nodeWildcard = new Node<T>(options, isStaticRoute);
 							nextNodes.push(node);
 						} else {
 							// parametred wildcard
@@ -169,7 +181,7 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 							}
 							// Create new node if not already exists
 							if(!node){
-								node= new Node<T>(options, param);
+								node= new Node<T>(options, isStaticRoute, param);
 								ref.push(node);
 							}
 							nextNodes.push(node);
@@ -185,7 +197,7 @@ export function addRoute<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], route
 						if(ignoreCase) part= part.toLowerCase();
 						node= currentNode.nodes.get(part);
 						if(!node){
-							node= new Node<T>(options);
+							node= new Node<T>(options, isStaticRoute);
 							currentNode.nodes.set(part, node);
 						}
 						nextNodes.push(node);
@@ -308,6 +320,8 @@ export interface PathResolverResult<T>{
 	params: string[] | undefined,
 	paramResolvers: ParamInterface[] | undefined,
 	parts: string[]|undefined // splited path parts
+	/** Do resolved route is static route */
+	isStatic: boolean
 }
 
 /** Node verification step */
@@ -429,14 +443,16 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 			}
 		}
 		//Found
+		node= queue[partI];
 		result={
 			status: HTTPStatus.OK,
-			controller: queue[partI].methods.get(method),
+			controller: node.methods.get(method),
 			error: undefined,
 			wrappers,
 			params,
 			paramResolvers,
-			parts: partsLen===partI? parts : parts.slice(0, partI) // save parts
+			parts: partsLen===partI? parts : parts.slice(0, partI), // save parts
+			isStatic: node.isStatic
 		}
 	} catch (error) {
 		result= {
@@ -446,7 +462,8 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 			wrappers: undefined,
 			params: undefined,
 			paramResolvers: undefined,
-			parts: undefined
+			parts: undefined,
+			isStatic: false
 		};
 	}
 	return result;
@@ -476,6 +493,7 @@ export function nodeToString<T>(rootNode: Node<T>){
 	var isLastNode: boolean;
 	var circular= new Set<Node<T>>(); // prevent circular
 	var mx= 100;
+	var cNodeName: string;
 	rootLoop: while(dept >= 0){
 		if(mx-- < 0) break;
 		var node= queue[dept];
@@ -487,7 +505,9 @@ export function nodeToString<T>(rootNode: Node<T>){
 				if(index === 0){
 					// prevent circular
 					if(circular.has(node)){
-						lines.push(`${prefix}└─ <${node===queue[dept-1]? 'parent': 'circular'}>`);
+						if(node!==queue[dept-1]){
+							lines.push(`${prefix}└─ <circular>`);
+						}
 						--dept;
 						continue rootLoop;
 					}
@@ -498,8 +518,14 @@ export function nodeToString<T>(rootNode: Node<T>){
 				k= staticArr[index]
 				if(k!= null){
 					nextNode= node.nodes.get(k)!;
-					isLastNode= !node.nodeWildcard && node.nodeWildcards.length===0 && node.nodeParams.length===0 && (index === staticArr.length - 1);
-					lines.push(`${prefix}${isLastNode? '└─' : '├─'} /${k}`);
+					if(nextNode === node && k===''){
+						// Do not show "/" as same node
+						++queueIndex[dept];
+						continue rootLoop;
+					} else {
+						isLastNode= !node.nodeWildcard && node.nodeWildcards.length===0 && node.nodeParams.length===0 && (index === staticArr.length - 1);
+						cNodeName= `/${k}`;
+					}
 				} else {
 					// check params next
 					queueStep[dept]= NodeCheckStep.PARAM;
@@ -510,7 +536,7 @@ export function nodeToString<T>(rootNode: Node<T>){
 			case NodeCheckStep.PARAM:
 				if(nextNode= node.nodeParams[index]){
 					isLastNode= !node.nodeWildcard && node.nodeWildcards.length===0 && index === (node.nodeParams.length-1)
-					lines.push(`${prefix}${isLastNode? '└─' : '├─'} :${nextNode.param!.name}`);
+					cNodeName= `:${nextNode.param!.name}`;
 				} else {
 					// go next
 					queueStep[dept]= NodeCheckStep.WILD_CARD_PARAM;
@@ -521,7 +547,7 @@ export function nodeToString<T>(rootNode: Node<T>){
 			case NodeCheckStep.WILD_CARD_PARAM:
 				if(nextNode= node.nodeWildcards[index]){
 					isLastNode= !node.nodeWildcard && index === node.nodeWildcards.length - 1
-					lines.push(`${prefix}${isLastNode? '└─' : '├─'} *${nextNode.param!.name}`);
+					cNodeName= `*${nextNode.param!.name}`;
 				} else {
 					// go next
 					queueStep[dept]= NodeCheckStep.WILD_CARD;
@@ -533,7 +559,7 @@ export function nodeToString<T>(rootNode: Node<T>){
 				if(index===0 && node.nodeWildcard){
 					nextNode= node.nodeWildcard;
 					isLastNode= true;
-					lines.push(`${prefix}└─ *`);
+					cNodeName= '*';
 				} else {
 					--dept // back
 					continue rootLoop;
@@ -542,9 +568,10 @@ export function nodeToString<T>(rootNode: Node<T>){
 			default:
 				throw new Error(`Enexpected step: ${queueStep[dept]}`);
 		}
-		// next dept
+		lines.push(`${prefix}${isLastNode? '└─' : '├─'} ${cNodeName} ${nextNode.methods.size?JSON.stringify(_mapKies(nextNode.methods)):''}`);
 		++queueIndex[dept] // next index for current dept
 		++dept // go to next dept
+		// next dept
 		queue[dept]= nextNode
 		queueIndex[dept]= 0
 		queueStep[dept]= NodeCheckStep.STATIC

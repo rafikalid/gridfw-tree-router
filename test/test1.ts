@@ -19,7 +19,7 @@ describe('Test routes', function(){
 	
 	it('Should add dynamic routes', function(){
 		app.get('/:var1', function(req: any, res: any){ return 'var1' });
-		app.get('/:var2/var3/hello', function(req: any, res: any){ return 'var 2' });
+		app.get('/:var2/:var3/hello', function(req: any, res: any){ return 'var 2' });
 		app.get('/test/:var1', function(req: any, res: any){ return 'var3' });
 	});
 	
@@ -41,6 +41,6 @@ describe('Test routes', function(){
 		console.log('***', app._root);
 
 		// print router tree
-		console.log("[APP]\n", app.toString());
+		console.log("[APP]", app.toString());
 	 })
 });

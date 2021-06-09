@@ -39,5 +39,7 @@
     "ts-transform-import-path-rewrite": "^0.3.0",
     "typescript": "^4.2.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "lru-ttl-cache": "^2.1.0"
+  }
 }
