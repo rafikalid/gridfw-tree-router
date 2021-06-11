@@ -1,7 +1,7 @@
 /**
  * Fast & lightweight Tree Router for Node & browser
  */
-import LRU_TTL_CACHE from 'lru-ttl-cache';
+import LRU_TTL_CACHE, { UpserResult } from 'lru-ttl-cache';
 import { DynamicParamInterface, Node, nodeToString, ParamInterface, PathResolverResult, resolvePath, StaticParamInterface } from "./node";
 import { Options } from "./options";
 import { RouteBuilder } from "./route-builder";
@@ -32,13 +32,13 @@ export default class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 		// Cache
 		var cache= this._routerCache= new LRU_TTL_CACHE(options?.routerCache);
 		var r;
-		cache.upsertCb= async (key:string, args: [string, string])=>{
-			var r= resolvePath<Controller>(this, args[0], args[1]);
+		cache.upsertCb= (key:string, args?: string[])=>{
+			var r= resolvePath<Controller>(this, args![0], args![1]);
 			return {
 				value: r,
 				bytes: 0,
 				isPermanent: !r.isStatic
-			}
+			};
 		};
 	}
 
