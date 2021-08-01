@@ -1,4 +1,4 @@
-import GridfwRouter from ".";
+import {GridfwRouter} from ".";
 import { addMethod, addWrapper, createRoute, Handler, Node, WrapperFx, mountSubRouter } from "./node";
 import { DEFAULT_OPTIONS, Options } from "./options";
 

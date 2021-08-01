@@ -1,6 +1,6 @@
-import type GridfwRouter from ".";
+import type {GridfwRouter} from ".";
 import type { Options } from "./options";
-import type {paramResolverHandler} from '.'
+import { DynamicParamInterface, ParamInterface } from "./params";
 
 
 /**
@@ -43,23 +43,6 @@ export class Node<Controller>{
 	}
 }
 
-/** Param */
-export interface ParamInterface{
-	name:	string
-	isStatic:boolean
-}
-export interface DynamicParamInterface extends ParamInterface{
-	isStatic: false
-	regex:	RegExp
-	resolver: paramResolverHandler
-	/** Enable caching value if resolver do not receive req and resp */
-	enableResolverCache: boolean
-}
-export interface StaticParamInterface extends ParamInterface{
-	isStatic: true
-	parts: string[]
-}
-
 /** Wrappers */
 export type WrapperFx= (req: any, resp: any, next: WrapperNextFx)=> any
 type WrapperNextFx= ()=> Promise<any>;
@@ -83,7 +66,7 @@ export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: 
 	// Convert routes into array
 	if(typeof routes === 'string') routes= [routes]
 	var i=0, len= routes.length, route, j, k;
-	var paramsMap= app._params;
+	var paramsMap= app.params;
 	var currentNodes= rootNodes;
 	for(; i<len; i++){
 		// Prepare route
@@ -116,7 +99,7 @@ export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: 
 						var l, ref, lLen;
 						if(param.isStatic===true){
 							//* Static param
-							ref= (param as StaticParamInterface).parts;
+							ref= param.parts;
 							lLen= ref.length;
 							for(l=0; l<lLen; l++){
 								var part2= ref[l];
