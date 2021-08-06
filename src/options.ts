@@ -7,6 +7,9 @@ export const DEFAULT_OPTIONS= {
 	/** Ignore path static parts case */
 	ignoreCase: true,
 
+	/** Ignore method's name case */
+	methodIgnoreCase: true,
+
 	/** Router Cache */
 	routerCache: {
 		/** Max entries @default Infinity */

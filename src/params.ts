@@ -24,7 +24,7 @@ export class RouterParams extends Map<string, ParamInterface>{
 			throw new Error('Expected param name as string');
 		if(this.has(paramName))
 			throw new Error(`Param already defined: ${paramName}`);
-		if(Array.isArray(regex)){
+		if (Array.isArray(regex)){
 			//* Static param
 			super.set(paramName, {
 				name: paramName,

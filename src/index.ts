@@ -3,7 +3,7 @@
  */
 import LRU_TTL_CACHE from 'lru-ttl-cache';
 import { Node, nodeToString, PathResolverResult, resolvePath } from "./node";
-import { Options } from "./options";
+import { DEFAULT_OPTIONS, Options } from "./options";
 import { RouterParams } from './params';
 import { RouteBuilder } from "./route-builder";
 

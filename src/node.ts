@@ -197,7 +197,10 @@ export function addMethod<T>(app: GridfwRouter<T>, method: string, currentNodes:
 	var nodes= addRoute(app, currentNodes, routes);
 	var i, len= nodes.length;
 	for(i=0; i<len; ++i){
-		_addMethod(nodes[i], method, handler);
+		let node= nodes[i];
+		if(node._options.methodIgnoreCase)
+			method= method.toUpperCase();
+		_addMethod(node, method, handler);
 	}
 }
 

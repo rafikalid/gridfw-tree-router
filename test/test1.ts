@@ -1,4 +1,4 @@
-import GridfwRouter from '../src'
+import {GridfwRouter} from '../src'
 import Assert from 'assert'
 import { resolvePath } from '../src/node';
 
@@ -12,9 +12,10 @@ describe('Test routes', function(){
 	});
 
 	it('Shood add params', function(){
-		app.param('var1')
-			.param('var2')
-			.param('var3')
+		app.params
+			.set('var1')
+			.set('var2')
+			.set('var3')
 	});
 	
 	it('Should add dynamic routes', function(){
