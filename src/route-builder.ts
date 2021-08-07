@@ -8,7 +8,7 @@ export class RouteBuilder<Controller>{
 	protected _rootNodes: Node<Controller>[];
 	protected _self: GridfwRouter<Controller>;
 	/** Constructor used only by GridfwRouter */
-	constructor(options?: Options);
+	constructor(options?: Partial<Options>);
 	constructor(rootNodes: Node<Controller>[], rootRouter: GridfwRouter<Controller>)
 	constructor(rootNodes?: any, rootRouter?: any){
 		if(arguments.length===2){

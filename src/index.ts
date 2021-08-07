@@ -7,6 +7,8 @@ import { DEFAULT_OPTIONS, Options } from "./options";
 import { RouterParams } from './params';
 import { RouteBuilder } from "./route-builder";
 
+export {Options, DEFAULT_OPTIONS}
+
 export class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	/** Tree route */
 	readonly _root: Node<Controller>;
@@ -17,7 +19,7 @@ export class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	readonly params: RouterParams= new RouterParams(this);
 	/** Interface  */
 
-	constructor(options?: Options){
+	constructor(options?: Partial<Options>){
 		super(options);
 		// Root Node
 		this._root= this._rootNodes[0];

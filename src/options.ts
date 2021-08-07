@@ -1,7 +1,30 @@
 /**
  * Router options
  */
-export const DEFAULT_OPTIONS= {
+
+export interface Options{
+	/** Do ignore trailing slash */
+	ignoreTrailingSlash: boolean,
+	/** Ignore path static parts case */
+	ignoreCase: boolean,
+
+	/** Ignore method's name case */
+	methodIgnoreCase: boolean,
+
+	/** Router Cache */
+	routerCache: {
+		/** Max entries @default Infinity */
+		max?:		number,
+		/** Max bytes @default Infinity */
+		maxBytes?:	number|string,
+		/** Time to live @default Infinity */
+		ttl?:    	number|string,
+		/** TTL check interval. @default 60s */
+		ttlInterval?:    number|string
+	}
+}
+
+export const DEFAULT_OPTIONS: Options= {
 	/** Do ignore trailing slash */
 	ignoreTrailingSlash: true,
 	/** Ignore path static parts case */
@@ -22,5 +45,3 @@ export const DEFAULT_OPTIONS= {
 		ttlInterval:    60000
 	}
 };
-
-export type Options= Readonly<typeof DEFAULT_OPTIONS>
