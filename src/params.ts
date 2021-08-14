@@ -41,7 +41,7 @@ export class RouterParams extends Map<string, ParamInterface>{
 				name: paramName,
 				isStatic: false,
 				regex: regex,
-				resolver: resolver,
+				resolve: resolver,
 				// Enable caching resolved value if resolver do not receive "req" and "resp"
 				enableResolverCache: !(resolver && resolver.length > 2)
 			});
@@ -54,10 +54,12 @@ export class RouterParams extends Map<string, ParamInterface>{
 export enum paramType{
 	/** Path param */
 	PATH_PARAM,
-	/** Wildcard param */
-	WILD_CARD_PARAM,
+	// /** Wildcard param */
+	// WILD_CARD_PARAM,
 	/** Query param */
-	QUERY_PARAM
+	QUERY_PARAM,
+	/** Cookie param */
+	COOKIE_PARAM
 };
 
 export type paramResolverHandler= (value: any, type: paramType, request?: any, response?: any)=> any
@@ -73,7 +75,7 @@ export interface ParamBInterface{
 export interface DynamicParamInterface extends ParamBInterface{
 	isStatic: false
 	regex:	RegExp
-	resolver: paramResolverHandler
+	resolve: paramResolverHandler
 	/** Enable caching value if resolver do not receive req and resp */
 	enableResolverCache: boolean
 }

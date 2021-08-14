@@ -2,7 +2,7 @@
  * Fast & lightweight Tree Router for Node & browser
  */
 import LRU_TTL_CACHE from 'lru-ttl-cache';
-import { Node, nodeToString, PathResolverResult, resolvePath } from "./node";
+import { Node, nodeToString, PathResolverResult, PathResolverSuccess, resolvePath } from "./node";
 import { DEFAULT_OPTIONS, Options } from "./options";
 import { RouterParams } from './params';
 import { RouteBuilder } from "./route-builder";
@@ -31,7 +31,7 @@ export class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 			return {
 				value: r,
 				bytes: 0,
-				isPermanent: !r.isStatic
+				isPermanent: (r as PathResolverSuccess<any>).isStatic === true
 			};
 		};
 	}

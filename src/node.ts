@@ -297,17 +297,26 @@ export enum HTTPStatus{
 	INTERNAL_ERROR= 500
 }
 
+/** Error descriptor */
+export interface RouteError{
+	code: HTTPStatus
+	causedBy: any
+}
 /** Path resolver result */
-export interface PathResolverResult<T>{
-	status: HTTPStatus,
-	controller: T|undefined,
-	error:	Error|undefined,
-	wrappers: WrapperFx[] | undefined,
-	params: string[] | undefined,
-	paramResolvers: ParamInterface[] | undefined,
-	parts: string[]|undefined // splited path parts
+export type PathResolverResult<T>= PathResolverSuccess<T> | PathResolverError;
+export interface PathResolverSuccess<T>{
+	status: HTTPStatus.OK,
+	controller: T,
+	wrappers: WrapperFx[],
+	params: string[],
+	paramResolvers: ParamInterface[],
+	parts: string[] // splited path parts
 	/** Do resolved route is static route */
 	isStatic: boolean
+}
+export interface PathResolverError{
+	status: HTTPStatus.INTERNAL_ERROR|HTTPStatus.NOT_FOUND,
+	error:	RouteError,
 }
 
 /** Node verification step */
@@ -432,8 +441,7 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 		node= queue[partI];
 		result={
 			status: HTTPStatus.OK,
-			controller: node.methods.get(method),
-			error: undefined,
+			controller: node.methods.get(method)!,
 			wrappers,
 			params,
 			paramResolvers,
@@ -441,15 +449,10 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 			isStatic: node.isStatic
 		}
 	} catch (error) {
+		let code= error===HTTPStatus.NOT_FOUND ? HTTPStatus.NOT_FOUND : HTTPStatus.INTERNAL_ERROR
 		result= {
-			status: error===HTTPStatus.NOT_FOUND ? HTTPStatus.NOT_FOUND : HTTPStatus.INTERNAL_ERROR,
-			controller: undefined,
-			error: error,
-			wrappers: undefined,
-			params: undefined,
-			paramResolvers: undefined,
-			parts: undefined,
-			isStatic: false
+			status: code,
+			error: {code, causedBy: error}
 		};
 	}
 	return result;
