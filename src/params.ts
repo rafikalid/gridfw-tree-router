@@ -62,7 +62,7 @@ export enum paramType{
 	COOKIE_PARAM
 };
 
-export type paramResolverHandler= (value: any, type: paramType, request?: any, response?: any)=> any
+export type paramResolverHandler= (value: any, type: paramType, request?: any)=> any
 export type paramTestCb= (value: any)=> boolean
 
 
