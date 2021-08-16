@@ -8,6 +8,10 @@ import { RouterParams } from './params';
 import { RouteBuilder } from "./route-builder";
 
 export {Options, DEFAULT_OPTIONS}
+export * from './node';
+export * from './params';
+export * from './options';
+export * from './route-builder';
 
 export class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	/** Tree route */
