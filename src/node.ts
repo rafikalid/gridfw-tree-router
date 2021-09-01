@@ -95,7 +95,7 @@ export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: 
 						//* param
 						isStaticRoute= false;
 						var param= paramsMap.get(part.substr(1));
-						if(!param) throw new Error(`Undefined parameter: ${part.substr(1)}`);
+						if(!param) throw new Error(`Undefined Path Parameter: "${part.substr(1)}" at route: ${route}`);
 						var l, ref, lLen;
 						if(param.isStatic===true){
 							//* Static param
@@ -370,7 +370,8 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 						index= queueIndex[partI];
 						while(index<len){
 							node= nodeParams[index++];
-							if((node.param as DynamicParamInterface).regex.test(part)){
+							let regx= (node.param as DynamicParamInterface).regex
+							if(regx==null || regx.test(part)){
 								// save next index
 								queueIndex[partI]= index;
 								// Go to next
@@ -391,9 +392,10 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 						index= queueIndex[partI];
 						if(len>0){
 							part= parts.slice(partI).join('/');
+							let rgx: RegExp|undefined;
 							while(index<len){
 								node= nodeParams[index++];
-								if(node.methods.has(method) && (node.param as DynamicParamInterface).regex.test(part)){
+								if(node.methods.has(method) && ( (rgx=(node.param as DynamicParamInterface).regex)==null || rgx.test(part) )){
 									parts[partI]= part; // keep this value
 									break rootwhile;
 								}
@@ -405,7 +407,8 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 					case NodeCheckStep.WILD_CARD:
 						if(node= currentNode.nodeWildcard){
 							part= parts.slice(partI).join('/');
-							if(node.methods.has(method) && (node.param as DynamicParamInterface).regex.test(part)){
+							let rgx: RegExp|undefined;
+							if(node.methods.has(method) && ( (rgx=(node.param as DynamicParamInterface).regex)==null || rgx.test(part) )){
 								parts[partI]= part; // keep this value
 								break rootwhile;
 							}
@@ -428,12 +431,12 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 		var paramResolvers: ParamInterface[]= [];
 		var i;
 		var paramNode: ParamInterface|undefined;
-		for(i=0; i<partI; i++){
+		for(i=0; i<=partI; i++){
 			node= queue[i];
 			if(node.wrappers.length)
 				wrappers.push(...node.wrappers);
 			if(paramNode= node.param){
-				params.push(parts[i])
+				params.push(parts[i-1])
 				paramResolvers.push(paramNode);
 			}
 		}
