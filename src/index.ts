@@ -7,7 +7,7 @@ import { DEFAULT_OPTIONS, Options } from "./options";
 import { RouterParams } from './params';
 import { RouteBuilder } from "./route-builder";
 
-export {Options, DEFAULT_OPTIONS}
+export { Options, DEFAULT_OPTIONS }
 export * from './node';
 export * from './params';
 export * from './options';
@@ -20,18 +20,18 @@ export class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	protected readonly _routerCache: LRU_TTL_CACHE<string, PathResolverResult<Controller>>;
 
 	/** Path & query params */
-	readonly params: RouterParams= new RouterParams(this);
+	readonly params: RouterParams = new RouterParams(this);
 	/** Interface  */
 
-	constructor(options?: Partial<Options>){
+	constructor(options?: Partial<Options>) {
 		super(options);
 		// Root Node
-		this._root= this._rootNodes[0];
+		this._root = this._rootNodes[0];
 		// Cache
-		var cache= this._routerCache= new LRU_TTL_CACHE(options?.routerCache);
+		var cache = this._routerCache = new LRU_TTL_CACHE(options?.routerCache);
 		var r;
-		cache.upsertCb= (key:string, args?: string[])=>{
-			var r= resolvePath<Controller>(this, args![0], args![1]);
+		cache.upsertCb = (key: string, args?: string[]) => {
+			var r = resolvePath<Controller>(this, args![0], args![1]);
 			return {
 				value: r,
 				bytes: 0,
@@ -41,12 +41,12 @@ export class GridfwRouter<Controller> extends RouteBuilder<Controller>{
 	}
 
 	/** Resolve Path */
-	resolvePath(method: string, path: string){
+	resolvePath(method: string, path: string) {
 		return this._routerCache.get(`${method} ${path}`, true, [method, path]);
 	}
 
 	/** router to string */
-	toString(): string{
+	toString(): string {
 		return nodeToString(this._root);
 	}
 }

@@ -1831,10 +1831,10 @@ lru-queue@^0.1.0:
   dependencies:
     es5-ext "~0.10.2"
 
-lru-ttl-cache@^2.4.2:
-  version "2.4.2"
-  resolved "https://registry.yarnpkg.com/lru-ttl-cache/-/lru-ttl-cache-2.4.2.tgz#01bff5c4731a0245882dbcd8e079d3035f41bc77"
-  integrity sha512-J8Dj9B5l16lPuJZLainJF+jclHIudjSHgvlHE5h/2mo5c4+OIaOcy07LvOXo8ZZnVlE2lghzzTGg2w3e70dc/Q==
+lru-ttl-cache@^2.4.3:
+  version "2.4.3"
+  resolved "https://registry.yarnpkg.com/lru-ttl-cache/-/lru-ttl-cache-2.4.3.tgz#3b721fe3eae45c3c4d5a4868c73f478ef4c9bba9"
+  integrity sha512-Iw4bEo8MpVh5CqmnNfzgBoy5x8Qa2BzsEB4bROfNHiY2rChCVqe9/ot8Tq8ZhRMGZ4o9zhXxVBPBbg24HP7Qmw==
   dependencies:
     bytes "^3.1.0"
     ms "^2.1.3"

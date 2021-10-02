@@ -1,6 +1,6 @@
 {
 	"name": "gridfw-tree-router",
-	"version": "1.0.8",
+	"version": "1.0.10",
 	"description": "Fast and lightweight Tree Router for Node and browser",
 	"main": "dist/commonjs/index.js",
 	"exports": {
@@ -47,6 +47,6 @@
 		"typescript-path-fix": "^1.0.5"
 	},
 	"dependencies": {
-		"lru-ttl-cache": "^2.4.2"
+		"lru-ttl-cache": "^2.4.3"
 	}
 }
