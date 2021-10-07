@@ -11,9 +11,9 @@ export class Node<Controller>{
 	/** @Private Options */
 	_options: Options;
 	// path: [Node];
-	/** Map static kies to nodes */
+	/** Map static keys to nodes */
 	nodes: Map<string, Node<Controller>> = new Map();
-	/** Map parametred nodes */
+	/** Map parametrized nodes */
 	nodeParams: Node<Controller>[] = [];
 	/** Map wild card params to node */
 	nodeWildcards: Node<Controller>[] = [];
@@ -23,7 +23,7 @@ export class Node<Controller>{
 	wrappers: WrapperFx[] = [];
 	/** Map HTTP methods to controllers */
 	methods: Map<string, Controller> = new Map<string, Controller>();
-	/** Parameter of current node (case of parametred node) */
+	/** Parameter of current node (case of parametrized node) */
 	param: ParamInterface | undefined;
 	/** If this node is accessed by a static route */
 	readonly isStatic: boolean
@@ -53,68 +53,47 @@ export type ControllerMethod = (request: any, response: any) => any
 /** Controller arg */
 export type Handler<Controller> = Controller | Controller[]
 
-
-// /** Create route */
-// export function createRoute<T>(rootNodes: Node<T>[], routes: string | string[]): Node<T>[] {
-// 	var result: Node<T>[] = [];
-// 	if (typeof routes === 'string') routes = [routes];
-// 	for (let i = 0, len = routes.length; i < len; ++i) {
-// 		let route = routes[i];
-// 		for (let j = 0, jLen = rootNodes.length; j < jLen; ++j) {
-// 			let rootNode = rootNodes[j];
-// 		}
-// 	}
-// 	//TODO create node
-// 	return result;
-// }
-
 /** Create route method */
 // TODO correct this shit!
 export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: string | string[]) {
 	// Convert routes into array
 	if (typeof routes === 'string') routes = [routes]
-	var i = 0, len = routes.length, route, j, k;
-	var paramsMap = app.params;
-	var currentNodes = rootNodes;
-	for (; i < len; i++) {
-		// Prepare route
-		route = routes[i].trim();
-		if (route === '/') {
-
+	const results: Set<Node<T>> = new Set();
+	const paramsMap = app.params;
+	for (let i = 0, len = routes.length; i < len; ++i) {
+		let route = routes[i].trim();
+		//* Add route notes if from route
+		if (route === '/' || route === '') {
+			for (let j = 0, jLen = rootNodes.length; j < jLen; ++j) results.add(rootNodes[j]);
+			continue;
 		}
+		//* Parse route
 		if (route.startsWith('/')) route = route.substr(1);
 		let parts = route.split('/');
-		let partsLen = parts.length;
-		currentNodes = rootNodes;
-		let nextNodes: Node<T>[];
-		let node;
+		let currentNodes = rootNodes;
 		let isStaticRoute = true; // set if this route has no params
-		// Go through route
-		for (j = 0; j < partsLen; j++) {
+		for (let j = 0, partsLen = parts.length; j < partsLen; ++j) {
 			let part = parts[j];
-			// Go trough nodes
-			let nodesLen = currentNodes.length;
-			nextNodes = [];
-			for (k = 0; k < nodesLen; k++) {
+			let nextNodes: Node<T>[] = [];
+			for (let k = 0, nodesLen = currentNodes.length; k < nodesLen; ++k) {
 				let currentNode = currentNodes[k];
 				//* Flags
 				let options = currentNode._options;
 				let ignoreCase = options.ignoreCase;
-				//* Swith part type
+				//* Switch part type
 				switch (part[0]) {
 					case ':':
 						//* param
 						isStaticRoute = false;
 						let param = paramsMap.get(part.substr(1));
 						if (!param) throw new Error(`Undefined Path Parameter: "${part.substr(1)}" at route: ${route}`);
-						let l, ref, lLen;
 						if (param.isStatic === true) {
 							//* Static param
-							ref = param.parts;
-							lLen = ref.length;
-							for (l = 0; l < lLen; l++) {
+							let ref = param.parts;
+							for (let l = 0, lLen = ref.length; l < lLen; l++) {
 								let part2 = ref[l];
 								if (ignoreCase) part2 = part2.toLowerCase();
+								let node: Node<T> | undefined;
 								if (node = currentNode.nodes.get(part2)) {
 									if (node.param) {
 										if (node.param !== param) throw new Error(`Node [:${param.name}] has already param [:${node.param.name}]`);
@@ -130,17 +109,16 @@ export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: 
 						} else {
 							//* Dynamic param
 							// Check if node already set
-							ref = currentNode.nodeParams;
-							lLen = ref.length;
-							node = null;
-							for (l = 0; l < lLen; ++l) {
+							let ref = currentNode.nodeParams;
+							let node: Node<T> | undefined;
+							for (let l = 0, lLen = ref.length; l < lLen; ++l) {
 								if (ref[l].param === param) {
 									node = ref[l];
 									break;
 								}
 							}
 							// Create new node if not already exists
-							if (!node) {
+							if (node == null) {
 								node = new Node<T>(options, isStaticRoute, param);
 								ref.push(node);
 							}
@@ -154,27 +132,23 @@ export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: 
 						if (j != partsLen - 1)
 							throw new Error(`Expected wildcard to be the last part in the route: ${route}`);
 						if (part === '*') {
-							// Generic wildcard  ( "??=" is supported starting from nodejs15)
-							node = currentNode.nodeWildcard
-							if (node == null)
-								node = currentNode.nodeWildcard = new Node<T>(options, isStaticRoute);
+							let node = currentNode.nodeWildcard ??= new Node<T>(options, isStaticRoute);
 							nextNodes.push(node);
 						} else {
-							// parametred wildcard
+							// parametrized wildcard
 							let param = paramsMap.get(part.substr(1));
 							if (!param) throw new Error(`Undefined parameter: ${part.substr(1)}`);
 							// Check if node already set
-							ref = currentNode.nodeWildcards;
-							lLen = ref.length;
-							node = null;
-							for (l = 0; l < lLen; ++l) {
+							let ref = currentNode.nodeWildcards;
+							let node: Node<T> | undefined;
+							for (let l = 0, lLen = ref.length; l < lLen; ++l) {
 								if (ref[l].param === param) {
 									node = ref[l];
 									break;
 								}
 							}
 							// Create new node if not already exists
-							if (!node) {
+							if (node == null) {
 								node = new Node<T>(options, isStaticRoute, param);
 								ref.push(node);
 							}
@@ -182,15 +156,14 @@ export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: 
 						}
 						//* wild card
 						break;
-					// @ts-ignore
 					case '?':
 						//* Part ignore char
 						part = part.substr(1)
 					default:
 						//* static part
 						if (ignoreCase) part = part.toLowerCase();
-						node = currentNode.nodes.get(part);
-						if (!node) {
+						let node = currentNode.nodes.get(part);
+						if (node == null) {
 							node = new Node<T>(options, isStaticRoute);
 							currentNode.nodes.set(part, node);
 						}
@@ -199,20 +172,22 @@ export function addRoute<T>(app: GridfwRouter<T>, rootNodes: Node<T>[], routes: 
 			}
 			currentNodes = nextNodes;
 		}
+		//* Add found nodes
+		for (let k = 0, nodesLen = currentNodes.length; k < nodesLen; ++k) {
+			results.add(currentNodes[k]);
+		}
 	}
-	return currentNodes;
+	return results;
 }
 
 /** Add http method and handler */
 export function addMethod<T>(app: GridfwRouter<T>, method: string, currentNodes: Node<T>[], routes: string | string[], handler: Handler<T>) {
 	var nodes = addRoute(app, currentNodes, routes);
-	var i, len = nodes.length;
-	for (i = 0; i < len; ++i) {
-		let node = nodes[i];
+	nodes.forEach(function (node) {
 		if (node._options.methodIgnoreCase)
 			method = method.toUpperCase();
 		_addMethod(node, method, handler);
-	}
+	});
 }
 
 /** @private add method */
@@ -232,19 +207,18 @@ function _addMethod<T>(node: Node<T>, method: string, handler: Handler<T>) {
 /** Add wrapper */
 export function addWrapper<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], routes: string | string[], wrapper: WrapperFx) {
 	var nodes = addRoute(app, currentNodes, routes);
-	var i, len = nodes.length;
-	for (i = 0; i < len; ++i) {
-		nodes[i].wrappers.push(wrapper);
-	}
+	nodes.forEach(function (node) {
+		node.wrappers.push(wrapper);
+	});
 }
 
 /** Mount subrouter */
 export function mountSubRouter<T>(app: GridfwRouter<T>, currentNodes: Node<T>[], routes: string | string[], subRouter: GridfwRouter<T>) {
 	var nodes = addRoute(app, currentNodes, routes);
-	var i, len = nodes.length;
 	var mergeNodesQueue: Node<T>[] = [];
-	for (i = 0; i < len; ++i)
-		mergeNodesQueue.push(nodes[i], subRouter._root);
+	nodes.forEach(function (node) {
+		mergeNodesQueue.push(node, subRouter._root);
+	});
 	_deepMergeNodes(mergeNodesQueue);
 }
 
@@ -270,13 +244,13 @@ function _deepMergeNodes<T>(queue: Node<T>[]) {
 			} else
 				targetNodeNodes.set(k, v);
 		});
-		// merge parametred nodes
+		// merge parametrized nodes
 		var targetNodeParams = targetNode.nodeParams;
 		var srcNodeParams = srcNode.nodeParams;
 		var j, jLen = srcNodeParams.length;
 		for (j = 0; j < jLen; ++j)
 			targetNodeParams.push(srcNodeParams[j]);
-		// merge whildcard params
+		// merge wildcard params
 		targetNodeParams = targetNode.nodeWildcards;
 		srcNodeParams = srcNode.nodeWildcards;
 		jLen = srcNodeParams.length;
@@ -285,7 +259,7 @@ function _deepMergeNodes<T>(queue: Node<T>[]) {
 		// add target generic wildcard
 		if (targetNode.nodeWildcard) {
 			if (srcNode.nodeWildcard)
-				throw new Error(`Mount faild>> src and target nodes have both generic wildcard!`);
+				throw new Error(`Mount failed>> src and target nodes have both generic wildcard!`);
 		} else {
 			targetNode.nodeWildcard = srcNode.nodeWildcard;
 		}
@@ -294,7 +268,7 @@ function _deepMergeNodes<T>(queue: Node<T>[]) {
 		// merge param
 		if (targetNode.param) {
 			if (srcNode.param)
-				throw new Error(`Mount faild>> Both src and target node have param!`);
+				throw new Error(`Mount failed>> Both src and target node have param!`);
 		} else {
 			targetNode.param = srcNode.param;
 		}
@@ -472,15 +446,6 @@ export function resolvePath<T>(app: GridfwRouter<T>, method: string, path: strin
 	return result;
 }
 
-/** @private get map kies */
-function _mapKies(map: Map<string, any>) {
-	var kies: string[] = [];
-	map.forEach((v, k) => {
-		kies.push(k);
-	});
-	return kies;
-}
-
 /** Convert router tree to string */
 export function nodeToString<T>(rootNode: Node<T>) {
 	var queue = [rootNode];
@@ -515,7 +480,7 @@ export function nodeToString<T>(rootNode: Node<T>) {
 						continue rootLoop;
 					}
 					circular.add(node);
-					staticArr = queueStaticKies[dept] = _mapKies(node.nodes);
+					staticArr = queueStaticKies[dept] = Array.from(node.nodes.keys());
 				} else
 					staticArr = queueStaticKies[dept];
 				k = staticArr[index]
@@ -571,7 +536,7 @@ export function nodeToString<T>(rootNode: Node<T>) {
 			default:
 				throw new Error(`Enexpected step: ${queueStep[dept]}`);
 		}
-		lines.push(`${prefix}${isLastNode ? '└─' : '├─'} ${cNodeName} ${nextNode.methods.size ? JSON.stringify(_mapKies(nextNode.methods)) : ''}`);
+		lines.push(`${prefix}${isLastNode ? '└─' : '├─'} ${cNodeName} ${nextNode.methods.size ? JSON.stringify(Array.from(nextNode.methods.keys())) : ''}`);
 		++queueIndex[dept] // next index for current dept
 		++dept // go to next dept
 		// next dept

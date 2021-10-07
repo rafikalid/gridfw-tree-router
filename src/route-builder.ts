@@ -74,9 +74,9 @@ export class RouteBuilder<Controller>{
 		return this
 	}
 
-	/** Create subroute */
+	/** Create sub-route */
 	route(route: string | string[]) {
-		var nodes = addRoute<Controller>(this._self, this._rootNodes, route);
+		var nodes = Array.from(addRoute<Controller>(this._self, this._rootNodes, route).values());
 		// var nodes= createRoute<Controller>(this._rootNodes, route);
 		return new RouteBuilder(nodes, this._self);
 	}
